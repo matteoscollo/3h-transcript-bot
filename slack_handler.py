@@ -10,6 +10,7 @@ output channel with the PDF attached.
 import os
 import re
 import logging
+import html
 import httpx
 
 log = logging.getLogger("transcript-bot.handler")
@@ -34,6 +35,15 @@ def decode_html_entities(text: str) -> str:
     for entity, char in HTML_ENTITIES.items():
         text = text.replace(entity, char)
     return text
+
+
+def clean_slack_url(raw: str) -> str:
+    """Remove Slack angle-bracket URL wrapping (<url> or <url|label>) and decode HTML entities."""
+    url = raw.strip()
+    m = re.match(r"^<([^|>]+)(?:\|[^>]*)?>$", url)
+    if m:
+        url = m.group(1)
+    return html.unescape(url)
 
 
 def parse_transcript_payload(text: str) -> dict | None:
@@ -79,7 +89,7 @@ def parse_transcript_payload(text: str) -> dict | None:
         "attendees": extract_single("ATTENDEES"),
         "keywords": keywords,
         "audio_url": extract_single("AUDIO_URL"),
-        "transcript_url": extract_single("TRANSCRIPT_URL"),
+        "transcript_url": clean_slack_url(extract_single("TRANSCRIPT_URL")),
         "summary": summary,
     }
 
